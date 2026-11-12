@@ -1,11 +1,44 @@
+
+# Workflow name
 name: CI
 
+# Trigger workflow on push to fix/lint branch
 on:
   push:
     branches: [fix/lint]
 
+# Define jobs
 jobs:
+
+  # Job 1: Check code quality
+  code-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repository
+      - name: Check out Git repository
+        uses: actions/checkout@v7
+
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # Install Node.js dependencies
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      # Run ESLint and Prettier
+      - name: Run linters
+        uses: wearerequired/lint-action@v3
+        with:
+          eslint: true
+          prettier: true
+
+  # Job 2: Build and push Docker image
   build-and-push:
+    needs: [code-lint]
     runs-on: ubuntu-latest
 
     steps:
@@ -15,14 +48,15 @@ jobs:
 
       # Docker login
       - name: Docker Setup (Login)
-        uses: docker/login-action@v4 
+        uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Docker build and push
+      # Build Docker image and push to Docker Hub
       - name: Docker Build and Push
         uses: docker/build-push-action@v7
         with:
+          context: .
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/devboard-fe-master:latest
